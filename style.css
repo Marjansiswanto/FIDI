@@ -1,5 +1,10 @@
 * { box-sizing: border-box; }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 :root {
   --navy-deep: #020617;
   --navy-mid: #071a3a;
@@ -578,7 +583,13 @@ body {
 .legend-list b { margin-left: auto; color: #f8fafc; }
 
 /* --- Table --- */
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; min-width: 480px; }
 .data-table th {
   text-align: left; padding: 8px 6px;
   border-bottom: 1px solid rgba(148,197,255,0.2);
