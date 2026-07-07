@@ -49,6 +49,31 @@ body {
   width: 38%;
   pointer-events: none;
   opacity: 0.85;
+  z-index: 1;
+}
+
+.network-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.net-node {
+  animation-name: netTwinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes netTwinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.95; }
+}
+
+.net-pulse {
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
 .side-left { left: 0; }
@@ -79,13 +104,13 @@ body {
 
 .globe-ring {
   fill: none;
-  stroke: rgba(34, 211, 238, 0.35);
-  stroke-width: 1;
+  stroke: rgba(34, 211, 238, 0.55);
+  stroke-width: 1.4;
 }
 
 .globe-ring-2 {
   r: 120;
-  stroke: rgba(59, 130, 246, 0.25);
+  stroke: rgba(59, 130, 246, 0.4);
   stroke-dasharray: 2 6;
 }
 
@@ -104,9 +129,16 @@ body {
 }
 
 .building {
-  background: linear-gradient(180deg, rgba(59,130,246,0.35), rgba(15,23,42,0.6));
-  border-top: 1px solid rgba(34,211,238,0.4);
-  box-shadow: 0 0 20px rgba(34,211,238,0.08);
+  background-color: rgba(10,16,32,0.7);
+  background-image:
+    linear-gradient(180deg, rgba(59,130,246,0.5), rgba(10,16,32,0.85)),
+    radial-gradient(circle, rgba(255,224,140,0.9) 1px, transparent 1.6px);
+  background-size: 100% 100%, 9px 12px;
+  background-position: 0 0, 4px 6px;
+  border-top: 2px solid rgba(34,211,238,0.7);
+  border-left: 1px solid rgba(34,211,238,0.15);
+  border-right: 1px solid rgba(34,211,238,0.15);
+  box-shadow: 0 0 30px rgba(34,211,238,0.15);
   position: relative;
 }
 
@@ -149,9 +181,19 @@ body {
   backdrop-filter: blur(16px);
   padding: 44px 40px 36px;
   box-shadow:
-    0 30px 80px rgba(0,0,0,0.55),
+    0 30px 90px rgba(0,0,0,0.6),
+    0 0 60px rgba(59,130,246,0.12),
     inset 0 1px 0 rgba(255,255,255,0.06);
   text-align: center;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #eab308, #22d3ee, #3b82f6);
 }
 
 .brand-row {
