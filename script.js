@@ -1,4 +1,4 @@
- // ======================================================
+// ======================================================
 // KONFIGURASI PASSWORD
 // Disimpan sebagai hash SHA-256, bukan teks biasa.
 // CATATAN JUJUR: field "Username/Email" di sini bersifat
@@ -13,7 +13,7 @@
 // 3. Tempel ke PASSWORD_HASH di bawah ini
 // ======================================================
 
-const PASSWORD_HASH = "c9daf4dd7326fbca56c8987ca62792df03b2e93951ab9bab6081cf8571258104";
+const PASSWORD_HASH = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d";
 // Hash di atas = "password" — GANTI SEBELUM DI-DEPLOY!
 
 const SESSION_KEY = "fidi_scie_unlocked";
@@ -116,9 +116,9 @@ function buildGlobeDecoration() {
     const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     dot.setAttribute("cx", x);
     dot.setAttribute("cy", y);
-    dot.setAttribute("r", Math.random() > 0.8 ? 2.2 : 1.3);
+    dot.setAttribute("r", Math.random() > 0.75 ? 3 : 1.8);
     dot.setAttribute("fill", Math.random() > 0.5 ? "#22d3ee" : "#3b82f6");
-    dot.setAttribute("opacity", 0.4 + Math.random() * 0.6);
+    dot.setAttribute("opacity", 0.55 + Math.random() * 0.45);
     dotsGroup.appendChild(dot);
   }
 
@@ -130,7 +130,7 @@ function buildGlobeDecoration() {
     line.setAttribute("y1", points[i].y);
     line.setAttribute("x2", next.x);
     line.setAttribute("y2", next.y);
-    line.setAttribute("stroke", "rgba(34,211,238,0.18)");
+    line.setAttribute("stroke", "rgba(34,211,238,0.32)");
     line.setAttribute("stroke-width", "1");
     linesGroup.appendChild(line);
   }
@@ -155,34 +155,126 @@ function buildCandles() {
   const group = document.getElementById("candles");
   if (!group) return;
   const count = 14;
-  let x = 20;
+  let x = 16;
+  let prevClose = 340;
+
   for (let i = 0; i < count; i++) {
-    const baseY = 360 - i * 22;
-    const bodyHeight = 14 + Math.random() * 26;
-    const wickExtra = 10 + Math.random() * 14;
+    const isUp = Math.random() > 0.35; // condong naik, meniru tren uptrend
+    const bodyHeight = 16 + Math.random() * 30;
+    const baseY = 372 - i * 23;
+    const wickExtra = 8 + Math.random() * 12;
+    const color = isUp ? "#10e0a0" : "#f87171";
 
     const wick = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    wick.setAttribute("x1", x + 6);
+    wick.setAttribute("x1", x + 7);
     wick.setAttribute("y1", baseY - wickExtra);
-    wick.setAttribute("x2", x + 6);
+    wick.setAttribute("x2", x + 7);
     wick.setAttribute("y2", baseY + bodyHeight + wickExtra);
-    wick.setAttribute("class", "candle");
-    wick.setAttribute("stroke-width", "1");
+    wick.setAttribute("stroke", color);
+    wick.setAttribute("stroke-width", "1.4");
+    wick.setAttribute("opacity", "0.85");
     group.appendChild(wick);
 
     const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     body.setAttribute("x", x);
     body.setAttribute("y", baseY);
-    body.setAttribute("width", 12);
+    body.setAttribute("width", 14);
     body.setAttribute("height", bodyHeight);
-    body.setAttribute("class", "candle-body");
     body.setAttribute("rx", 2);
+    body.setAttribute("fill", color);
+    body.setAttribute("opacity", "0.9");
     group.appendChild(body);
 
-    x += 26;
+    x += 27;
   }
 }
 
-buildGlobeDecoration();
-buildSkyline();
-buildCandles();
+function buildNetworkOverlay() {
+  const svg = document.getElementById("networkOverlay");
+  if (!svg) return;
+
+  const NS = "http://www.w3.org/2000/svg";
+  const nodeCount = 46;
+  const nodes = [];
+
+  for (let i = 0; i < nodeCount; i++) {
+    nodes.push({
+      x: Math.random() * 1000,
+      y: Math.random() * 1000,
+      r: Math.random() > 0.85 ? 4.5 : 2.2
+    });
+  }
+
+  const allLines = [];
+
+  // Hubungkan tiap node ke 2 tetangga terdekat
+  nodes.forEach((n, i) => {
+    const distances = nodes
+      .map((m, j) => ({ j, d: (n.x - m.x) ** 2 + (n.y - m.y) ** 2 }))
+      .filter(o => o.j !== i)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 2);
+
+    distances.forEach(({ j }) => {
+      const m = nodes[j];
+      const line = document.createElementNS(NS, "line");
+      line.setAttribute("x1", n.x);
+      line.setAttribute("y1", n.y);
+      line.setAttribute("x2", m.x);
+      line.setAttribute("y2", m.y);
+      line.setAttribute("stroke", "rgba(148,197,255,0.16)");
+      line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      allLines.push({ x1: n.x, y1: n.y, x2: m.x, y2: m.y });
+    });
+  });
+
+  // Node dengan animasi kedip acak
+  nodes.forEach(n => {
+    const circle = document.createElementNS(NS, "circle");
+    circle.setAttribute("cx", n.x);
+    circle.setAttribute("cy", n.y);
+    circle.setAttribute("r", n.r);
+    circle.setAttribute("fill", n.r > 3 ? "#eab308" : "#e2f4ff");
+    circle.setAttribute("class", "net-node");
+    circle.style.animationDuration = (2 + Math.random() * 3) + "s";
+    circle.style.animationDelay = (Math.random() * 4) + "s";
+    svg.appendChild(circle);
+  });
+
+  // Titik cahaya bergerak antar node (efek "data mengalir"), hanya sebagian garis
+  const NS_ANIM = NS;
+  allLines
+    .filter(() => Math.random() < 0.35)
+    .forEach(l => {
+      const pulse = document.createElementNS(NS, "circle");
+      pulse.setAttribute("r", 3);
+      pulse.setAttribute("fill", Math.random() > 0.5 ? "#22d3ee" : "#eab308");
+      pulse.setAttribute("class", "net-pulse");
+
+      const animX = document.createElementNS(NS_ANIM, "animate");
+      animX.setAttribute("attributeName", "cx");
+      animX.setAttribute("values", `${l.x1};${l.x2};${l.x1}`);
+      animX.setAttribute("dur", (3 + Math.random() * 3) + "s");
+      animX.setAttribute("repeatCount", "indefinite");
+
+      const animY = document.createElementNS(NS_ANIM, "animate");
+      animY.setAttribute("attributeName", "cy");
+      animY.setAttribute("values", `${l.y1};${l.y2};${l.y1}`);
+      animY.setAttribute("dur", animX.getAttribute("dur"));
+      animY.setAttribute("repeatCount", "indefinite");
+
+      const animOpacity = document.createElementNS(NS_ANIM, "animate");
+      animOpacity.setAttribute("attributeName", "opacity");
+      animOpacity.setAttribute("values", "0;1;1;0");
+      animOpacity.setAttribute("dur", animX.getAttribute("dur"));
+      animOpacity.setAttribute("repeatCount", "indefinite");
+
+      pulse.appendChild(animX);
+      pulse.appendChild(animY);
+      pulse.appendChild(animOpacity);
+      svg.appendChild(pulse);
+    });
+}
+
+buildNetworkOverlay();
