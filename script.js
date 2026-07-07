@@ -13,7 +13,7 @@
 // 3. Tempel ke PASSWORD_HASH di bawah ini
 // ======================================================
 
-const PASSWORD_HASH = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d";
+const PASSWORD_HASH = "c9daf4dd7326fbca56c8987ca62792df03b2e93951ab9bab6081cf8571258104";
 // Hash di atas = "password" — GANTI SEBELUM DI-DEPLOY!
 
 const SESSION_KEY = "fidi_scie_unlocked";
