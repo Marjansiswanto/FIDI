@@ -186,7 +186,8 @@ function initAuth() {
           mfaChallengeModal.classList.remove("hidden");
           mfaCodeInput.focus();
         } catch (smsErr) {
-          errorMsg.textContent = translateAuthError(smsErr.code);
+          console.error("MFA challenge send error:", smsErr);
+          errorMsg.textContent = translateAuthError(smsErr.code) + ` (kode: ${smsErr.code || "tidak diketahui"})`;
         }
       } else {
         errorMsg.textContent = translateAuthError(err.code);
@@ -265,7 +266,8 @@ function initAuth() {
       mfaEnrollStep1.classList.add("hidden");
       mfaEnrollStep2.classList.remove("hidden");
     } catch (err) {
-      mfaEnrollError.textContent = translateAuthError(err.code);
+      console.error("MFA enroll sendCode error:", err);
+      mfaEnrollError.textContent = translateAuthError(err.code) + ` (kode: ${err.code || "tidak diketahui"})`;
     }
   });
 
@@ -281,7 +283,8 @@ function initAuth() {
       mfaPhoneInput.value = "";
       mfaEnrollCodeInput.value = "";
     } catch (err) {
-      mfaEnrollError.textContent = translateAuthError(err.code);
+      console.error("MFA enroll confirm error:", err);
+      mfaEnrollError.textContent = translateAuthError(err.code) + ` (kode: ${err.code || "tidak diketahui"})`;
     }
   });
 
@@ -494,3 +497,4 @@ function buildNetworkOverlay() {
 }
 
 buildNetworkOverlay();
+  
