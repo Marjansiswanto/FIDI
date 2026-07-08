@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FIDI SCIE — Portal Investasi Indonesia</title>
-<link rel="stylesheet" href="style.css"v=5>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="firebase-config.js"></script>
 </head>
 <body>
 
@@ -71,8 +72,15 @@
           </button>
         </label>
 
+        <label class="field hidden" id="confirmPasswordField">
+          <span class="field-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M17 9V7a5 5 0 0 0-10 0v2a3 3 0 0 0-3 3v7a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-7a3 3 0 0 0-3-3Zm-8-2a3 3 0 1 1 6 0v2H9V7Z"/></svg>
+          </span>
+          <input type="password" id="confirmPasswordInput" placeholder="Konfirmasi Password" autocomplete="off">
+        </label>
+
         <div class="field-row">
-          <label class="remember">
+          <label class="remember" id="rememberRow">
             <input type="checkbox" id="rememberMe">
             <span>Ingat saya</span>
           </label>
@@ -81,14 +89,59 @@
 
         <button type="button" id="loginBtn" class="login-btn">
           <svg viewBox="0 0 24 24" class="shield-icon"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Zm0 2.2 6 2.2v4.6c0 4-2.7 7.6-6 8.9-3.3-1.3-6-4.9-6-8.9V6.4l6-2.2Z"/><path d="m10.8 13.4-2-2-1.4 1.4 3.4 3.4 6-6-1.4-1.4z"/></svg>
-          LOGIN SECURELY
+          <span id="loginBtnLabel">LOGIN SECURELY</span>
         </button>
 
         <p id="errorMsg" class="error"></p>
+
+        <p class="mode-toggle">
+          <span id="modeToggleText">Belum punya akun?</span>
+          <button type="button" id="toggleModeBtn">Daftar di sini</button>
+        </p>
       </form>
     </main>
 
+    <!-- Kontainer reCAPTCHA tak terlihat, wajib untuk verifikasi SMS -->
+    <div id="recaptcha-container"></div>
+
     <div class="ground-glow" aria-hidden="true"></div>
+  </div>
+
+  <!-- MODAL: MASUKKAN KODE SMS (2FA / MFA) -->
+  <div id="mfaChallengeModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Verifikasi 2 Langkah</h3>
+      <p id="mfaChallengeHint">Kode OTP telah dikirim lewat SMS.</p>
+      <input type="text" id="mfaCodeInput" placeholder="Kode 6 digit" autocomplete="off" inputmode="numeric">
+      <div class="modal-actions">
+        <button id="mfaCancelBtn">Batal</button>
+        <button id="mfaConfirmBtn">Verifikasi</button>
+      </div>
+      <p id="mfaChallengeError" class="error"></p>
+    </div>
+  </div>
+
+  <!-- MODAL: DAFTARKAN NOMOR HP UNTUK 2FA (setelah login pertama) -->
+  <div id="mfaEnrollModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Aktifkan Verifikasi 2 Langkah</h3>
+      <p>Tambahkan nomor HP supaya akun Anda lebih aman (kode OTP dikirim tiap login).</p>
+      <div id="mfaEnrollStep1">
+        <input type="tel" id="mfaPhoneInput" placeholder="+62812xxxxxxx" autocomplete="off">
+        <div class="modal-actions">
+          <button id="mfaSkipBtn">Nanti saja</button>
+          <button id="mfaSendCodeBtn">Kirim Kode</button>
+        </div>
+      </div>
+      <div id="mfaEnrollStep2" class="hidden">
+        <input type="text" id="mfaEnrollCodeInput" placeholder="Kode 6 digit" autocomplete="off" inputmode="numeric">
+        <div class="modal-actions">
+          <button id="mfaEnrollCancelBtn">Batal</button>
+          <button id="mfaEnrollConfirmBtn">Aktifkan</button>
+        </div>
+      </div>
+      <p id="mfaEnrollError" class="error"></p>
+    </div>
   </div>
 
   <!-- LAYAR KONTEN (SETELAH LOGIN) -->
@@ -327,117 +380,4 @@
                 <p>Hasil olahan 10 langkah Algoritma Strategis SCIE — dari observasi makro hingga rekomendasi eksekusi</p>
               </div>
             </div>
-            <span class="dash-badge">Agustus 2026 – 2031 · Horizon 5 Tahun</span>
-          </div>
-        </div>
-
-        <div class="dash-grid dash-grid-2">
-          <div class="dash-card">
-            <h3>Peta Yield vs Growth</h3>
-            <div class="spectrum">
-              <div class="spectrum-track"></div>
-              <div class="spectrum-point" style="left:8%"><span class="sp-badge growth">G</span><b>MAPI</b><small>0,7%</small></div>
-              <div class="spectrum-point" style="left:36%"><span class="sp-badge">A</span><b>AMRT</b><small>2,4%</small></div>
-              <div class="spectrum-point" style="left:64%"><span class="sp-badge">C</span><b>ACES</b><small>9,2%</small></div>
-              <div class="spectrum-point" style="left:90%"><span class="sp-badge income">R</span><b>RALS</b><small>12,9%</small></div>
-            </div>
-            <p class="hint-text">Posisi berdasarkan dividend yield terkini (Jun–Jul 2026). Semakin ke kanan, semakin besar porsi return dari dividen tahunan.</p>
-          </div>
-
-          <div class="dash-card">
-            <h3>Data Fundamental Ringkas</h3>
-            <div class="table-scroll"><table class="data-table">
-              <thead><tr><th>Ticker</th><th>Harga</th><th>PER</th><th>Yield</th></tr></thead>
-              <tbody>
-                <tr><td>AMRT</td><td>1.400</td><td>—</td><td>2,4%</td></tr>
-                <tr><td>MAPI</td><td>1.500</td><td>10,7x</td><td>0,7%</td></tr>
-                <tr><td>ACES</td><td>350</td><td>—</td><td>9,2%</td></tr>
-                <tr><td>RALS</td><td>470</td><td>—</td><td>12,9%</td></tr>
-              </tbody>
-            </table></div>
-            <p class="hint-text">Sumber data: Jun–Jul 2026 · Mata uang: Rupiah (IDR)</p>
-          </div>
-        </div>
-
-        <div class="dash-grid dash-grid-3">
-          <div class="dash-card">
-            <h3>Profil A — Income-Focused</h3>
-            <p class="card-sub">Prioritas dividen, minim gejolak harga</p>
-            <div class="donut" style="background: conic-gradient(#eab308 0 47%, #f59e0b 47% 82%, #64748b 82% 100%);">
-              <div class="donut-hole"><span>~11%</span><small>Yield/thn</small></div>
-            </div>
-            <ul class="legend-list">
-              <li><i class="dot" style="background:#eab308"></i> ACES ~Rp350rb · 10 lot <b>47%</b></li>
-              <li><i class="dot" style="background:#f59e0b"></i> RALS ~Rp470rb · 10 lot <b>35%</b></li>
-              <li><i class="dot" style="background:#64748b"></i> Kas Cadangan ~Rp180rb <b>18%</b></li>
-            </ul>
-            <div class="risk-row"><span class="tag low">RISIKO RENDAH</span></div>
-          </div>
-
-          <div class="dash-card featured-card">
-            <span class="featured-tag">★ PALING SEIMBANG</span>
-            <h3>Profil B — Balanced</h3>
-            <p class="card-sub">Campuran dividen dan potensi pertumbuhan</p>
-            <div class="donut" style="background: conic-gradient(#22d3ee 0 45%, #eab308 45% 80%, #64748b 80% 100%);">
-              <div class="donut-hole"><span>~6-7%</span><small>Yield/thn</small></div>
-            </div>
-            <ul class="legend-list">
-              <li><i class="dot" style="background:#22d3ee"></i> MAPI ~Rp450rb · 3 lot <b>45%</b></li>
-              <li><i class="dot" style="background:#eab308"></i> ACES ~Rp350rb · 10 lot <b>35%</b></li>
-              <li><i class="dot" style="background:#64748b"></i> RALS ~Rp200rb · 4 lot <b>20%</b></li>
-            </ul>
-            <div class="risk-row"><span class="tag med">RISIKO SEDANG</span></div>
-          </div>
-
-          <div class="dash-card">
-            <h3>Profil C — Growth-Tilted</h3>
-            <p class="card-sub">Fokus capital gain, siap fluktuasi besar</p>
-            <div class="donut" style="background: conic-gradient(#22d3ee 0 60%, #3b82f6 60% 88%, #64748b 88% 100%);">
-              <div class="donut-hole"><span>&lt;2%</span><small>Yield/thn</small></div>
-            </div>
-            <ul class="legend-list">
-              <li><i class="dot" style="background:#22d3ee"></i> MAPI ~Rp600rb · 4 lot <b>60%</b></li>
-              <li><i class="dot" style="background:#3b82f6"></i> AMRT ~Rp280rb · 2 lot <b>28%</b></li>
-              <li><i class="dot" style="background:#64748b"></i> Kas Cadangan ~Rp120rb <b>12%</b></li>
-            </ul>
-            <div class="risk-row"><span class="tag high">RISIKO TINGGI</span></div>
-          </div>
-        </div>
-
-        <div class="dash-grid dash-grid-2">
-          <div class="dash-card">
-            <h3>Proyeksi Ilustratif 5 Tahun</h3>
-            <p class="card-sub">Nilai akhir dari modal awal Rp1.000.000</p>
-            <div class="hbar-list">
-              <div class="hbar-row"><span>Optimis (fesyen) · 12%</span><div class="hbar-track"><div class="hbar-fill" style="width:100%; background:#22d3ee;"></div></div><b>Rp1,76jt</b></div>
-              <div class="hbar-row"><span>Reksadana/diversifikasi · 9%</span><div class="hbar-track"><div class="hbar-fill" style="width:87%; background:#eab308;"></div></div><b>Rp1,54jt</b></div>
-              <div class="hbar-row"><span>Grocery/defensif · 8%</span><div class="hbar-track"><div class="hbar-fill" style="width:83%; background:#3b82f6;"></div></div><b>Rp1,47jt</b></div>
-              <div class="hbar-row"><span>Baseline deposito · 5%</span><div class="hbar-track"><div class="hbar-fill" style="width:73%; background:#94a3b8;"></div></div><b>Rp1,28jt</b></div>
-              <div class="hbar-row"><span>Pesimis · -5%</span><div class="hbar-track"><div class="hbar-fill" style="width:44%; background:#ef4444;"></div></div><b>Rp773rb</b></div>
-            </div>
-          </div>
-
-          <div class="dash-card">
-            <h3>Kesimpulan SCIE</h3>
-            <p>Untuk modal Rp1 juta dengan horizon Agustus 2026–2031, <b>Profil B (Balanced)</b> paling sejalan dengan prinsip data-driven &amp; agile SCIE — menyeimbangkan yield tinggi ACES/RALS dengan potensi pertumbuhan MAPI, tanpa menaruh seluruh modal pada satu titik kegagalan.</p>
-            <p>Kalau prioritasmu benar-benar minim gejolak, geser ke <b>Profil A</b>. Kalau siap menanggung fluktuasi demi potensi upside lebih besar, <b>Profil C</b> jadi pilihan rasional — bukan salah, hanya beda toleransi risiko.</p>
-          </div>
-        </div>
-
-        <div class="disclaimer-box">
-          <span class="disclaimer-icon">⚠️</span>
-          <div>
-            <b>Bukan nasihat keuangan.</b>
-            <p>Angka harga, yield, dan proyeksi bersifat ilustratif berdasarkan data Jun–Jul 2026 dan dapat berubah signifikan. Cek harga live serta laporan keuangan terbaru sebelum eksekusi. Keputusan dan risiko sepenuhnya di tangan Anda.</p>
-          </div>
-        </div>
-
-        <p class="scie-tagline">SCIE — SEE FARTHER · THINK DEEPER · DECIDE BETTER · GROW TOGETHER</p>
-      </section>
-
-    </div>
-  </div>
-
-  <script src="script.js"></script>
-</body>
-</html>
+            <span class="dash-badge">Agustus 2026 – 20
