@@ -1,41 +1,48 @@
 // ======================================================
-// KONFIGURASI PASSWORD
-// Disimpan sebagai hash SHA-256, bukan teks biasa.
-// CATATAN JUJUR: field "Username/Email" di sini bersifat
-// kosmetik mengikuti desain referensi — situs statis ini
-// hanya memvalidasi SATU password bersama untuk semua orang,
-// bukan akun individual. Untuk login per-akun sungguhan,
-// diperlukan backend/database asli.
-//
-// Cara ganti password:
-// 1. Buka https://emn178.github.io/online-tools/sha256.html
-// 2. Ketik password baru, salin hasil hash-nya
-// 3. Tempel ke PASSWORD_HASH di bawah ini
+// AUTENTIKASI — FIREBASE (Sign In, Sign Up, Verifikasi Email, 2FA SMS)
+// Konfigurasi Firebase ada di file firebase-config.js
 // ======================================================
-
-const PASSWORD_HASH = "c9daf4dd7326fbca56c8987ca62792df03b2e93951ab9bab6081cf8571258104";
-// Hash di atas = "password" — GANTI SEBELUM DI-DEPLOY!
-
-const SESSION_KEY = "fidi_scie_unlocked";
 
 const gate = document.getElementById("gate");
 const content = document.getElementById("content");
 const passwordInput = document.getElementById("passwordInput");
 const usernameInput = document.getElementById("usernameInput");
+const confirmPasswordField = document.getElementById("confirmPasswordField");
+const confirmPasswordInput = document.getElementById("confirmPasswordInput");
 const loginBtn = document.getElementById("loginBtn");
+const loginBtnLabel = document.getElementById("loginBtnLabel");
 const errorMsg = document.getElementById("errorMsg");
 const logoutBtn = document.getElementById("logoutBtn");
 const eyeToggle = document.getElementById("eyeToggle");
 const rememberMe = document.getElementById("rememberMe");
+const rememberRow = document.getElementById("rememberRow");
 const forgotBtn = document.getElementById("forgotBtn");
+const toggleModeBtn = document.getElementById("toggleModeBtn");
+const modeToggleText = document.getElementById("modeToggleText");
 
-async function sha256(text) {
-  const data = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+const mfaChallengeModal = document.getElementById("mfaChallengeModal");
+const mfaChallengeHint = document.getElementById("mfaChallengeHint");
+const mfaCodeInput = document.getElementById("mfaCodeInput");
+const mfaChallengeError = document.getElementById("mfaChallengeError");
+const mfaCancelBtn = document.getElementById("mfaCancelBtn");
+const mfaConfirmBtn = document.getElementById("mfaConfirmBtn");
+
+const mfaEnrollModal = document.getElementById("mfaEnrollModal");
+const mfaEnrollStep1 = document.getElementById("mfaEnrollStep1");
+const mfaEnrollStep2 = document.getElementById("mfaEnrollStep2");
+const mfaPhoneInput = document.getElementById("mfaPhoneInput");
+const mfaEnrollCodeInput = document.getElementById("mfaEnrollCodeInput");
+const mfaEnrollError = document.getElementById("mfaEnrollError");
+const mfaSendCodeBtn = document.getElementById("mfaSendCodeBtn");
+const mfaSkipBtn = document.getElementById("mfaSkipBtn");
+const mfaEnrollCancelBtn = document.getElementById("mfaEnrollCancelBtn");
+const mfaEnrollConfirmBtn = document.getElementById("mfaEnrollConfirmBtn");
+
+let isSignUpMode = false;
+let mfaResolver = null;      // dipakai saat login butuh kode SMS (user sudah aktifkan 2FA)
+let mfaVerificationId = null;
+let enrollVerificationId = null;
+let recaptchaVerifier = null;
 
 function unlock() {
   gate.classList.add("hidden");
@@ -43,56 +50,265 @@ function unlock() {
 }
 
 function lock() {
-  sessionStorage.removeItem(SESSION_KEY);
-  localStorage.removeItem(SESSION_KEY);
   content.classList.add("hidden");
   gate.classList.remove("hidden");
   passwordInput.value = "";
 }
 
-// Cek sesi tersimpan (baik sessionStorage maupun localStorage kalau "Ingat saya" dicentang)
-if (sessionStorage.getItem(SESSION_KEY) === "true" || localStorage.getItem(SESSION_KEY) === "true") {
-  unlock();
+function setLoginBusy(isBusy) {
+  loginBtn.disabled = isBusy;
+  loginBtn.style.opacity = isBusy ? "0.6" : "1";
 }
 
-async function attemptLogin() {
-  const hash = await sha256(passwordInput.value);
-  if (hash === PASSWORD_HASH) {
-    errorMsg.textContent = "";
-    if (rememberMe.checked) {
-      localStorage.setItem(SESSION_KEY, "true");
-    } else {
-      sessionStorage.setItem(SESSION_KEY, "true");
+function translateAuthError(code) {
+  const map = {
+    "auth/invalid-email": "Format email tidak valid.",
+    "auth/user-not-found": "Email atau password salah.",
+    "auth/wrong-password": "Email atau password salah.",
+    "auth/invalid-credential": "Email atau password salah.",
+    "auth/email-already-in-use": "Email ini sudah terdaftar. Coba masuk saja.",
+    "auth/weak-password": "Password minimal 6 karakter.",
+    "auth/too-many-requests": "Terlalu banyak percobaan. Coba lagi beberapa saat lagi.",
+    "auth/missing-password": "Password tidak boleh kosong.",
+    "auth/invalid-phone-number": "Format nomor HP tidak valid. Gunakan format +62...",
+    "auth/network-request-failed": "Gagal terhubung ke server. Cek koneksi internet.",
+    "auth/invalid-verification-code": "Kode OTP salah atau kedaluwarsa."
+  };
+  return map[code] || "Terjadi kesalahan. Coba lagi.";
+}
+
+function setMode(signUp) {
+  isSignUpMode = signUp;
+  errorMsg.textContent = "";
+  confirmPasswordField.classList.toggle("hidden", !signUp);
+  rememberRow.classList.toggle("hidden", signUp);
+  loginBtnLabel.textContent = signUp ? "DAFTAR AKUN" : "LOGIN SECURELY";
+  modeToggleText.textContent = signUp ? "Sudah punya akun?" : "Belum punya akun?";
+  toggleModeBtn.textContent = signUp ? "Masuk di sini" : "Daftar di sini";
+}
+
+toggleModeBtn.addEventListener("click", () => setMode(!isSignUpMode));
+
+function initAuth() {
+  const {
+    auth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendEmailVerification,
+    sendPasswordResetEmail,
+    setPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+    signOut,
+    onAuthStateChanged,
+    RecaptchaVerifier,
+    PhoneAuthProvider,
+    PhoneMultiFactorGenerator,
+    multiFactor,
+    getMultiFactorResolver
+  } = window.fidiAuth;
+
+  recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+
+  let hasOfferedMfaThisSession = false;
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      lock();
+      return;
+    }
+    if (!user.emailVerified) {
+      errorMsg.textContent = "Email belum diverifikasi. Cek inbox Anda, lalu klik tautan verifikasi.";
+      return; // tetap di gate, jangan unlock dulu
     }
     unlock();
-  } else {
-    errorMsg.textContent = "Username atau password salah.";
-    passwordInput.value = "";
-    passwordInput.focus();
-  }
-}
 
-loginBtn.addEventListener("click", attemptLogin);
-
-[usernameInput, passwordInput].forEach(el => {
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      attemptLogin();
+    // Tawarkan aktivasi 2FA sekali per sesi kalau user belum punya faktor kedua
+    const enrolledFactors = multiFactor(user).enrolledFactors;
+    if (!hasOfferedMfaThisSession && enrolledFactors.length === 0) {
+      hasOfferedMfaThisSession = true;
+      mfaEnrollModal.classList.remove("hidden");
     }
   });
-});
+
+  async function attemptLogin() {
+    const email = usernameInput.value.trim();
+    const password = passwordInput.value;
+    errorMsg.textContent = "";
+
+    if (!email || !password) {
+      errorMsg.textContent = "Isi email dan password terlebih dahulu.";
+      return;
+    }
+
+    if (isSignUpMode) {
+      const confirmPassword = confirmPasswordInput.value;
+      if (password !== confirmPassword) {
+        errorMsg.textContent = "Konfirmasi password tidak sama.";
+        return;
+      }
+      setLoginBusy(true);
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(cred.user);
+        errorMsg.textContent = "Akun dibuat! Cek email Anda untuk verifikasi sebelum masuk.";
+        setMode(false);
+        passwordInput.value = "";
+        confirmPasswordInput.value = "";
+      } catch (err) {
+        errorMsg.textContent = translateAuthError(err.code);
+      } finally {
+        setLoginBusy(false);
+      }
+      return;
+    }
+
+    setLoginBusy(true);
+    try {
+      await setPersistence(
+        auth,
+        rememberMe.checked ? browserLocalPersistence : browserSessionPersistence
+      );
+      await signInWithEmailAndPassword(auth, email, password);
+      // unlock() otomatis terpanggil lewat onAuthStateChanged di atas
+    } catch (err) {
+      if (err.code === "auth/multi-factor-auth-required") {
+        // User ini sudah aktifkan 2FA -> minta kode SMS dulu
+        mfaResolver = getMultiFactorResolver(auth, err);
+        const hint = mfaResolver.hints[0];
+        mfaChallengeHint.textContent = `Kode OTP dikirim ke nomor berakhiran ...${hint.phoneNumber.slice(-4)}`;
+        try {
+          const phoneProvider = new PhoneAuthProvider(auth);
+          mfaVerificationId = await phoneProvider.verifyPhoneNumber(
+            { multiFactorHint: hint, session: mfaResolver.session },
+            recaptchaVerifier
+          );
+          mfaChallengeModal.classList.remove("hidden");
+          mfaCodeInput.focus();
+        } catch (smsErr) {
+          errorMsg.textContent = translateAuthError(smsErr.code);
+        }
+      } else {
+        errorMsg.textContent = translateAuthError(err.code);
+        passwordInput.value = "";
+        passwordInput.focus();
+      }
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+
+  loginBtn.addEventListener("click", attemptLogin);
+
+  [usernameInput, passwordInput, confirmPasswordInput].forEach(el => {
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        attemptLogin();
+      }
+    });
+  });
+
+  forgotBtn.addEventListener("click", async () => {
+    const email = usernameInput.value.trim();
+    if (!email) {
+      errorMsg.textContent = "Isi kolom email dulu, lalu klik \"Lupa password?\" lagi.";
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      errorMsg.textContent = "Link reset password sudah dikirim ke email Anda.";
+    } catch (err) {
+      errorMsg.textContent = translateAuthError(err.code);
+    }
+  });
+
+  logoutBtn.addEventListener("click", () => signOut(auth));
+
+  // --- Verifikasi kode SMS saat LOGIN (user yang sudah punya 2FA aktif) ---
+  mfaConfirmBtn.addEventListener("click", async () => {
+    mfaChallengeError.textContent = "";
+    try {
+      const cred = PhoneAuthProvider.credential(mfaVerificationId, mfaCodeInput.value.trim());
+      const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
+      await mfaResolver.resolveSignIn(multiFactorAssertion);
+      mfaChallengeModal.classList.add("hidden");
+      mfaCodeInput.value = "";
+      // unlock() otomatis terpanggil lewat onAuthStateChanged
+    } catch (err) {
+      mfaChallengeError.textContent = translateAuthError(err.code);
+    }
+  });
+
+  mfaCancelBtn.addEventListener("click", () => {
+    mfaChallengeModal.classList.add("hidden");
+    mfaCodeInput.value = "";
+    mfaChallengeError.textContent = "";
+  });
+
+  // --- Pendaftaran nomor HP untuk 2FA (dipanggil setelah user login & email terverifikasi) ---
+  mfaSendCodeBtn.addEventListener("click", async () => {
+    mfaEnrollError.textContent = "";
+    const phone = mfaPhoneInput.value.trim();
+    if (!phone.startsWith("+")) {
+      mfaEnrollError.textContent = "Gunakan format internasional, contoh: +62812xxxxxxx";
+      return;
+    }
+    try {
+      const user = auth.currentUser;
+      const mfaSession = await multiFactor(user).getSession();
+      const phoneProvider = new PhoneAuthProvider(auth);
+      enrollVerificationId = await phoneProvider.verifyPhoneNumber(
+        { phoneNumber: phone, session: mfaSession },
+        recaptchaVerifier
+      );
+      mfaEnrollStep1.classList.add("hidden");
+      mfaEnrollStep2.classList.remove("hidden");
+    } catch (err) {
+      mfaEnrollError.textContent = translateAuthError(err.code);
+    }
+  });
+
+  mfaEnrollConfirmBtn.addEventListener("click", async () => {
+    mfaEnrollError.textContent = "";
+    try {
+      const cred = PhoneAuthProvider.credential(enrollVerificationId, mfaEnrollCodeInput.value.trim());
+      const assertion = PhoneMultiFactorGenerator.assertion(cred);
+      await multiFactor(auth.currentUser).enroll(assertion, "Nomor HP utama");
+      mfaEnrollModal.classList.add("hidden");
+      mfaEnrollStep1.classList.remove("hidden");
+      mfaEnrollStep2.classList.add("hidden");
+      mfaPhoneInput.value = "";
+      mfaEnrollCodeInput.value = "";
+    } catch (err) {
+      mfaEnrollError.textContent = translateAuthError(err.code);
+    }
+  });
+
+  mfaSkipBtn.addEventListener("click", () => {
+    mfaEnrollModal.classList.add("hidden");
+  });
+
+  mfaEnrollCancelBtn.addEventListener("click", () => {
+    mfaEnrollModal.classList.add("hidden");
+    mfaEnrollStep1.classList.remove("hidden");
+    mfaEnrollStep2.classList.add("hidden");
+    mfaEnrollError.textContent = "";
+  });
+}
+
+// Tunggu firebase-config.js selesai load (dimuat sebagai module, bisa lebih lambat dari script.js ini)
+if (window.fidiAuth) {
+  initAuth();
+} else {
+  window.addEventListener("fidiAuthReady", initAuth);
+}
 
 eyeToggle.addEventListener("click", () => {
   const isPassword = passwordInput.type === "password";
   passwordInput.type = isPassword ? "text" : "password";
 });
 
-forgotBtn.addEventListener("click", () => {
-  errorMsg.textContent = "Hubungi admin portal untuk reset password.";
-});
-
-logoutBtn.addEventListener("click", lock);
 
 // ======================================================
 // DEKORASI VISUAL (globe network, skyline, candlestick)
